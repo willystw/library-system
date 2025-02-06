@@ -1,13 +1,13 @@
 package com.willystw.librarysystem.service;
 
 import com.willystw.librarysystem.config.CheckoutConfiguration;
+import com.willystw.librarysystem.controller.exception.InvalidCheckoutException;
 import com.willystw.librarysystem.model.Book;
 import com.willystw.librarysystem.model.Checkout;
 import com.willystw.librarysystem.model.UpdateBookDto;
 import com.willystw.librarysystem.model.User;
 import com.willystw.librarysystem.repository.CheckoutRepository;
 import jakarta.transaction.Transactional;
-import org.apache.coyote.BadRequestException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -34,7 +34,7 @@ public class CheckoutService {
   }
 
   @Transactional
-  public Checkout borrowBook(Long bookId, Long userId) throws BadRequestException {
+  public Checkout borrowBook(Long bookId, Long userId) {
     Book book = bookService.getBookById(bookId);
     User user = userService.findById(userId);
 
@@ -52,11 +52,17 @@ public class CheckoutService {
 
       return checkoutRepository.save(checkout);
     } else {
-      throw new BadRequestException("Book or User not found");
+      throw new InvalidCheckoutException("[borrowBook] Book or user not found, or the book is already borrowed.");
     }
   }
 
-  public long lateReturnDate(Long bookId) throws BadRequestException {
+  public Checkout getCheckoutData(Long checkoutId) {
+    return checkoutRepository
+        .findById(checkoutId)
+        .orElseThrow(() -> new InvalidCheckoutException("[getCheckoutData] No checkout data found."));
+  }
+
+  public long lateReturnDate(Long bookId) {
     Checkout checkout = checkoutRepository.findBorrowedBookByBookId(bookId);
     if (checkout != null) {
       LocalDateTime borrowDate = checkout.getBorrowDate();
@@ -68,19 +74,20 @@ public class CheckoutService {
         return ChronoUnit.DAYS.between(LocalDate.now(), deadline);
       }
     } else {
-      throw new BadRequestException("Checkout data not found");
+      throw new InvalidCheckoutException("[lateReturnDate] No checkout data found.");
     }
   }
 
   @Transactional
-  public Checkout returnBook(Long bookId) throws BadRequestException {
+  public Checkout returnBook(Long bookId, Long userId) {
     Book book = bookService.getBookById(bookId);
+    User user = userService.findById(userId);
     Checkout checkout = null;
     if(book != null) {
       checkout = checkoutRepository.findBorrowedBookByBookId(bookId);
     }
 
-    if(checkout != null) {
+    if(user != null && checkout != null) {
       long lateDate = lateReturnDate(bookId);
       checkout.setTotalFine(lateDate * checkoutConfiguration.getDailyPenalty());
       if(lateDate > 0) {
@@ -94,7 +101,7 @@ public class CheckoutService {
       checkout.setReturnDate(LocalDateTime.now());
       return checkoutRepository.save(checkout);
     } else {
-      throw new BadRequestException("Book or checkout data not found");
+      throw new InvalidCheckoutException("[returnBook] Book not found, user not found, or checkout record not found.");
     }
   }
 }

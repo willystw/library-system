@@ -24,22 +24,30 @@ public class CheckoutController {
   }
 
   @PostMapping("/borrowBook")
-  public ResponseEntity<Checkout> borrowBook(@RequestBody BorrowBookDto borrowBookDto) throws BadRequestException {
+  public ResponseEntity<Checkout> borrowBook(@RequestBody BorrowBookDto borrowBookDto) {
     Checkout checkout = checkoutService
         .borrowBook(borrowBookDto.getBookId(), borrowBookDto.getUserId());
 
     return ResponseEntity.ok(checkout);
   }
 
+  @GetMapping("/find/{id}")
+  public ResponseEntity<Checkout> findOne(@PathVariable("id") Long checkoutId) {
+    Checkout checkout = checkoutService.getCheckoutData(checkoutId);
+
+    return ResponseEntity.ok(checkout);
+  }
+
   @GetMapping("/late/{id}")
-  public ResponseEntity<Long> isLateReturn(@PathVariable("id") Long bookId) throws BadRequestException {
+  public ResponseEntity<Long> isLateReturn(@PathVariable("id") Long bookId) {
     Long lateReturnDay = checkoutService.lateReturnDate(bookId);
     return ResponseEntity.ok(lateReturnDay);
   }
 
   @PostMapping("/returnBook")
-  public ResponseEntity<Checkout> returnBook(@RequestBody ReturnBookDto returnBookDto) throws BadRequestException {
-    Checkout checkout = checkoutService.returnBook(returnBookDto.getBookId());
+  public ResponseEntity<Checkout> returnBook(@RequestBody ReturnBookDto returnBookDto) {
+    Checkout checkout = checkoutService.returnBook(returnBookDto.getBookId(),
+        returnBookDto.getUserId());
 
     return ResponseEntity.ok(checkout);
   }
